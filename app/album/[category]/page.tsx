@@ -2,26 +2,25 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { motion, AnimatePresence, PanInfo, useMotionValue, useTransform, useScroll } from 'framer-motion';
+import { motion, AnimatePresence, PanInfo, useMotionValue, useTransform } from 'framer-motion';
 import Polaroid from '@/components/Polaroid';
 import { memories, categories } from '@/lib/data';
 import Hearts from '@/components/Hearts';
 
-// --- PARALLAX SCATTERED BACKGROUND ---
+// --- FIXED STATIC SCATTERED BACKGROUND ---
 const ScatteredBackground = ({ photos }: { photos: any[] }) => {
   const [mounted, setMounted] = useState(false);
-  const { scrollY } = useScroll();
   
   useEffect(() => { setMounted(true); }, []);
 
   const backgroundItems = useMemo(() => {
+    // Generate layout once and keep it fixed
     return [...photos, ...photos].slice(0, 12).map((p, i) => ({
       ...p,
       top: `${(i * 25 + 10) % 90}%`,
       left: `${(i * 17 + 5) % 90}%`,
       rotation: (i * 45) % 360,
       scale: 0.5 + ((i * 7) % 30) / 100,
-      speed: 0.1 + (i % 3) * 0.1 
     }));
   }, [photos]);
 
@@ -29,23 +28,24 @@ const ScatteredBackground = ({ photos }: { photos: any[] }) => {
 
   return (
     <div className="fixed inset-0 overflow-hidden pointer-events-none opacity-25 select-none z-0">
+      {/* Blurred container for all background items */}
       <div className="relative w-full h-full blur-[2px]">
         {backgroundItems.map((p, i) => (
-          <BackgroundItem key={`bg-${i}`} item={p} scrollY={scrollY} />
+          <div 
+            key={`bg-${i}`} 
+            className="absolute transform-gpu" // GPU acceleration for better performance
+            style={{ 
+              top: p.top, 
+              left: p.left,
+              transform: `rotate(${p.rotation}deg) scale(${p.scale})`
+            }}
+          >
+            {/* Using basic Polaroid look but without the animation overhead */}
+            <Polaroid image={p.img} date="" note="" rotation={0} />
+          </div>
         ))}
       </div>
     </div>
-  );
-};
-
-const BackgroundItem = ({ item, scrollY }: any) => {
-  const y = useTransform(scrollY, [0, 2000], [0, -200 * item.speed]);
-  return (
-    <motion.div className="absolute" style={{ top: item.top, left: item.left, y }}>
-      <div style={{ transform: `rotate(${item.rotation}deg) scale(${item.scale})` }}>
-        <Polaroid image={item.img} date="" note="" rotation={0} />
-      </div>
-    </motion.div>
   );
 };
 
@@ -79,7 +79,6 @@ export default function AlbumPage() {
         loadedCount++;
         setLoadProgress(Math.floor((loadedCount / totalPhotos) * 100));
         if (loadedCount === totalPhotos) {
-          // Add a small delay for a smoother "reveal"
           setTimeout(() => setIsLoading(false), 1000);
         }
       };
