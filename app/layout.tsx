@@ -3,12 +3,12 @@ import { useState } from "react";
 import { Playfair_Display, Caveat } from "next/font/google";
 import "./globals.css";
 import MusicPlayer from "@/components/MusicPlayer";
+import LetterModal from "@/components/LetterModal";
 import { motion, AnimatePresence } from "framer-motion";
 
 const playfair = Playfair_Display({ subsets: ["latin"], variable: "--font-playfair" });
 const caveat = Caveat({ subsets: ["latin"], variable: "--font-caveat" });
 
-// Background memories that will appear everywhere
 const polaroids = [
   { id: 1, src: "https://images.unsplash.com/photo-1518133910546-b6c2fb7d79e3?w=300", top: "5%", left: "5%", rotate: -15 },
   { id: 2, src: "https://images.unsplash.com/photo-1523438885200-e635ba2c371e?w=300", top: "10%", left: "85%", rotate: 12 },
@@ -25,12 +25,13 @@ const polaroids = [
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   const [isEntryClicked, setIsEntryClicked] = useState(false);
   const [showContent, setShowContent] = useState(false);
+  const [isLetterOpen, setIsLetterOpen] = useState(false);
 
   return (
     <html lang="en">
-      <body className={`${playfair.variable} ${caveat.variable} font-serif bg-[#FFFBF0] antialiased`}>
+      <body className={`${playfair.variable} ${caveat.variable} font-serif bg-[#FFFBF0] antialiased selection:bg-yellow-100`}>
         
-        {/* 1. SCATTERED BACKGROUND (Fixed so it doesn't move) */}
+        {/* 1. SCATTERED BACKGROUND */}
         <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden">
           {polaroids.map((p) => (
             <motion.div
@@ -51,11 +52,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               </div>
             </motion.div>
           ))}
-          {/* Subtle overlay to keep everything behind a warm tint */}
           <div className="absolute inset-0 bg-[#FFFBF0]/30 backdrop-blur-[1px]" />
         </div>
 
-        {/* 2. MUSIC & COUNTDOWN LOGIC */}
+        {/* 2. MUSIC & LOGIC */}
         <MusicPlayer 
           start={isEntryClicked} 
           onComplete={() => setShowContent(true)} 
@@ -65,7 +65,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <AnimatePresence>
           {!isEntryClicked && (
             <motion.div 
-              exit={{ opacity: 0 }}
+              exit={{ opacity: 0, y: -20 }}
               className="fixed inset-0 z-[400] bg-[#FFFBF0] flex flex-col items-center justify-center p-6 text-center"
             >
               <h1 className="font-serif text-5xl md:text-7xl text-gray-800 mb-4">
@@ -84,10 +84,72 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           )}
         </AnimatePresence>
 
-        {/* 4. ACTUAL CONTENT (Children + Main Layout) */}
+        {/* 4. ACTUAL CONTENT */}
         <main className={`relative z-10 transition-opacity duration-1000 ${showContent ? "opacity-100" : "opacity-0"}`}>
           {children}
         </main>
+
+        {/* 5. FLOATING LETTER TRIGGER */}
+  {/* 5. FLOATING LETTER TRIGGER */}
+<AnimatePresence>
+  {showContent && (
+    <motion.button
+      initial={{ opacity: 0, scale: 0.5 }}
+      animate={{ 
+        opacity: 1, 
+        scale: 1,
+        // Multi-axis floating effect
+        y: [0, -20, 0],
+        x: [0, 5, 0],
+        rotate: [-12, -8, -12] 
+      }}
+      whileHover={{ 
+        scale: 1.1, 
+        rotate: 0,
+        transition: { duration: 0.3 } 
+      }}
+      whileTap={{ scale: 0.9 }}
+      transition={{ 
+        // Smooth looping for the float
+        y: { 
+          repeat: Infinity, 
+          duration: 4, 
+          ease: "easeInOut" 
+        },
+        x: { 
+          repeat: Infinity, 
+          duration: 5, 
+          ease: "easeInOut" 
+        },
+        rotate: { 
+          repeat: Infinity, 
+          duration: 6, 
+          ease: "easeInOut" 
+        },
+        opacity: { delay: 0.8 }
+      }}
+      onClick={() => setIsLetterOpen(true)}
+      className="fixed bottom-10 right-10 z-[200] drop-shadow-2xl"
+    >
+      <div className="bg-white p-4 md:p-5 rounded-2xl border-2 border-pink-100 shadow-2xl relative overflow-hidden group">
+        <div className="absolute inset-0 bg-pink-50 opacity-0 group-hover:opacity-100 transition-opacity" />
+        <span className="text-4xl md:text-5xl relative z-10">✉️</span>
+      </div>
+      
+      {/* Refined notification pulse */}
+      <motion.div 
+        animate={{ scale: [1, 1.2, 1] }}
+        transition={{ repeat: Infinity, duration: 2 }}
+        className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full border-2 border-white" 
+      />
+    </motion.button>
+  )}
+</AnimatePresence>
+
+        {/* 6. THE MODAL */}
+             <AnimatePresence>
+               {isLetterOpen && <LetterModal onClose={() => setIsLetterOpen(false)} />}
+             </AnimatePresence>
 
       </body>
     </html>

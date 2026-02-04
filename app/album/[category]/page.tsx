@@ -53,12 +53,44 @@ export default function AlbumPage() {
   const params = useParams();
   const categoryId = params.category as string;
   
+  // --- STATE ---
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
   const [visibleCount, setVisibleCount] = useState(3); 
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadProgress, setLoadProgress] = useState(0);
 
   const currentCategory = categories.find(c => c.id === categoryId);
   const photos = memories[categoryId] || [];
 
+  // --- IMAGE PRELOADER ---
+  useEffect(() => {
+    if (photos.length === 0) {
+      setIsLoading(false);
+      return;
+    }
+
+    let loadedCount = 0;
+    const totalPhotos = photos.length;
+
+    photos.forEach((photo) => {
+      const img = new Image();
+      img.src = photo.img;
+      img.onload = () => {
+        loadedCount++;
+        setLoadProgress(Math.floor((loadedCount / totalPhotos) * 100));
+        if (loadedCount === totalPhotos) {
+          // Add a small delay for a smoother "reveal"
+          setTimeout(() => setIsLoading(false), 1000);
+        }
+      };
+      img.onerror = () => {
+        loadedCount++;
+        if (loadedCount === totalPhotos) setIsLoading(false);
+      };
+    });
+  }, [photos]);
+
+  // --- ANIMATION VALUES ---
   const dragX = useMotionValue(0);
   const rotateWheel = useTransform(dragX, [-250, 250], [-30, 30]);
   const verticalSlope = useTransform(dragX, [-250, 0, 250], [60, 0, 60]);
@@ -76,9 +108,48 @@ export default function AlbumPage() {
 
   return (
     <main className="min-h-screen bg-[#FFFBF0] p-4 md:p-12 overflow-x-hidden relative selection:bg-pink-200">
+      
+      {/* 1. CUTIE LOADING SCREEN */}
+      <AnimatePresence>
+        {isLoading && (
+          <motion.div
+            key="loader"
+            exit={{ opacity: 0, scale: 1.1 }}
+            transition={{ duration: 0.8, ease: "easeInOut" }}
+            className="fixed inset-0 z-[100] bg-[#FFFBF0] flex flex-col items-center justify-center"
+          >
+            <motion.div
+              animate={{ 
+                scale: [1, 1.2, 1],
+                rotate: [0, 10, -10, 0]
+              }}
+              transition={{ repeat: Infinity, duration: 2 }}
+              className="text-6xl mb-6"
+            >
+              ✨💖✨
+            </motion.div>
+            <h2 className="font-handwriting text-3xl text-pink-500 animate-pulse">
+              Developing our memories...
+            </h2>
+            <div className="w-48 h-1 bg-pink-100 rounded-full mt-6 overflow-hidden relative">
+              <motion.div 
+                className="absolute inset-y-0 left-0 bg-pink-400"
+                initial={{ width: 0 }}
+                animate={{ width: `${loadProgress}%` }}
+                transition={{ type: "spring", stiffness: 50 }}
+              />
+            </div>
+            <p className="mt-3 text-pink-300 text-[10px] tracking-[0.3em] uppercase font-bold">
+              {loadProgress}% Loaded
+            </p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <Hearts />
       <ScatteredBackground photos={photos} />
 
+      {/* 2. LIGHTBOX / MODAL VIEW */}
       <AnimatePresence mode="wait">
         {selectedIndex !== null && (
           <motion.div 
@@ -169,8 +240,12 @@ export default function AlbumPage() {
         )}
       </AnimatePresence>
 
-      <div className={`max-w-6xl mx-auto z-10 transition-all duration-1000 ease-in-out 
-        ${selectedIndex !== null ? 'blur-3xl scale-95 opacity-0' : 'opacity-100'}`}
+      {/* 3. MAIN GALLERY CONTENT */}
+      <motion.div 
+        className={`max-w-6xl mx-auto z-10 transition-all duration-1000 ease-in-out 
+          ${selectedIndex !== null ? 'blur-3xl scale-95 opacity-0' : 'opacity-100'}`}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: isLoading ? 0 : 1 }}
       >
         <nav className="mb-12">
           <Link href="/" className="inline-flex items-center group font-handwriting text-2xl text-pink-400 hover:text-pink-600 transition-all">
@@ -189,7 +264,6 @@ export default function AlbumPage() {
           </div>
         </header>
 
-        {/* Updated Grid: Now 3 columns on large screens */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-12 gap-y-16 justify-items-center">
           {photos.slice(0, visibleCount).map((p, index) => (
             <motion.div 
@@ -215,7 +289,6 @@ export default function AlbumPage() {
               className="flex flex-col items-center justify-center mt-24 pb-32"
             >
               <button 
-                // Increment by 3 to add exactly one full row
                 onClick={() => setVisibleCount(prev => prev + 3)}
                 className="group flex flex-col items-center gap-3 transition-all hover:scale-105"
               >
@@ -234,7 +307,7 @@ export default function AlbumPage() {
             </motion.div>
           )}
         </AnimatePresence>
-      </div>
+      </motion.div>
     </main>
   );
 }
